@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Veridian — AI Content Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --white: #ffffff;
+    --off-white: #f7f7f5;
+    --gray-50: #f4f4f2;
+    --gray-100: #ebebea;
+    --gray-200: #d8d8d6;
+    --gray-300: #b5b5b3;
+    --gray-400: #8a8a87;
+    --gray-500: #5e5e5b;
+    --charcoal: #2a2a28;
+    --ink: #1a1a18;
+    --blue: #3b6ef0;
+    --blue-light: #eef1fd;
+    --blue-mid: #c7d1fa;
+    --green: #2e7d5e;
+    --green-light: #e8f5f0;
+    --red: #c0392b;
+    --red-light: #fdf0ef;
+    --radius-sm: 8px;
+    --radius: 14px;
+    --radius-lg: 22px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 4px 16px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.05);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--white);
+    color: var(--charcoal);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--gray-100);
+  }
+  .nav-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px; height: 64px;
+  }
+  .nav-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.35rem; color: var(--ink); letter-spacing: -.01em;
+    text-decoration: none;
+  }
+  .nav-logo span { color: var(--blue); }
+  .nav-links { display: flex; gap: 32px; list-style: none; }
+  .nav-links a {
+    font-size: .875rem; font-weight: 500; color: var(--gray-400);
+    text-decoration: none; transition: color .2s;
+  }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-cta {
+    background: var(--ink); color: var(--white);
+    border: none; border-radius: var(--radius-sm);
+    padding: 9px 20px; font-size: .875rem; font-weight: 500;
+    font-family: inherit; cursor: pointer;
+    transition: background .2s, transform .15s;
+  }
+  .nav-cta:hover { background: var(--charcoal); transform: translateY(-1px); }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 140px 28px 80px;
+    max-width: 1100px; margin: 0 auto;
+    text-align: center;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--blue-light); border: 1px solid var(--blue-mid);
+    border-radius: 100px; padding: 5px 14px 5px 10px;
+    font-size: .78rem; font-weight: 500; color: var(--blue);
+    margin-bottom: 28px;
+    animation: fadeUp .6s ease both;
+  }
+  .badge-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--blue); display: inline-block;
+    animation: pulse 2s ease infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .5; transform: scale(.8); }
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.6rem, 5.5vw, 4.2rem);
+    line-height: 1.12; letter-spacing: -.02em;
+    color: var(--ink);
+    margin-bottom: 20px;
+    animation: fadeUp .6s .1s ease both;
+  }
+  .hero h1 em { font-style: italic; color: var(--blue); }
+  .hero-sub {
+    font-size: clamp(1rem, 1.5vw, 1.15rem);
+    color: var(--gray-400); font-weight: 400;
+    max-width: 520px; margin: 0 auto 48px;
+    animation: fadeUp .6s .2s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── UPLOAD BOX ── */
+  .upload-wrap {
+    max-width: 580px; margin: 0 auto;
+    animation: fadeUp .6s .3s ease both;
+  }
+  .upload-box {
+    border: 1.5px dashed var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 48px 32px;
+    background: var(--off-white);
+    cursor: pointer;
+    transition: background .25s, border-color .25s, transform .2s;
+    position: relative; overflow: hidden;
+  }
+  .upload-box:hover {
+    background: var(--gray-50);
+    border-color: var(--blue-mid);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+  .upload-box.drag-over {
+    background: var(--blue-light);
+    border-color: var(--blue);
+    border-style: solid;
+  }
+  .upload-icon {
+    width: 48px; height: 48px;
+    background: var(--white);
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    border: 1px solid var(--gray-100);
+  }
+  .upload-icon svg { width: 22px; height: 22px; color: var(--gray-400); }
+  .upload-title { font-size: 1rem; font-weight: 600; color: var(--charcoal); margin-bottom: 6px; }
+  .upload-sub { font-size: .875rem; color: var(--gray-400); }
+  .upload-sub span { color: var(--blue); font-weight: 500; }
+  .upload-types {
+    margin-top: 16px;
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  }
+  .type-chip {
+    background: var(--white); border: 1px solid var(--gray-100);
+    border-radius: 100px; padding: 3px 10px;
+    font-size: .72rem; font-weight: 500; color: var(--gray-400);
+  }
+  input[type=file] { display: none; }
+
+  .upload-btn {
+    margin-top: 20px;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--ink); color: var(--white);
+    border: none; border-radius: var(--radius-sm);
+    padding: 12px 28px; font-size: .9rem; font-weight: 500;
+    font-family: inherit; cursor: pointer;
+    transition: background .2s, transform .15s, box-shadow .2s;
+    box-shadow: 0 2px 8px rgba(26,26,24,.15);
+  }
+  .upload-btn:hover {
+    background: #111; transform: scale(1.025);
+    box-shadow: 0 4px 16px rgba(26,26,24,.2);
+  }
+
+  /* ── FILE PREVIEW ── */
+  .preview-card {
+    margin: 20px auto 0;
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: none; align-items: center; gap: 14px;
+    box-shadow: var(--shadow-sm);
+    animation: fadeUp .3s ease both;
+  }
+  .preview-card.show { display: flex; }
+  .preview-thumb {
+    width: 44px; height: 44px;
+    border-radius: 8px; object-fit: cover;
+    background: var(--gray-100); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .preview-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .preview-thumb svg { width: 20px; height: 20px; color: var(--gray-300); }
+  .preview-info { flex: 1; min-width: 0; text-align: left; }
+  .preview-name {
+    font-size: .875rem; font-weight: 500; color: var(--charcoal);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .preview-size { font-size: .78rem; color: var(--gray-400); }
+  .preview-remove {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1px solid var(--gray-200); background: none;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: var(--gray-400); transition: background .2s, color .2s;
+    flex-shrink: 0;
+  }
+  .preview-remove:hover { background: var(--gray-100); color: var(--charcoal); }
+
+  /* ── LOADING ── */
+  .loading-wrap {
+    margin-top: 20px; display: none;
+    flex-direction: column; align-items: center; gap: 10px;
+  }
+  .loading-wrap.show { display: flex; }
+  .progress-bar-track {
+    width: 100%; max-width: 320px; height: 4px;
+    background: var(--gray-100); border-radius: 100px; overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%; border-radius: 100px;
+    background: var(--blue); width: 0%;
+    transition: width .1s linear;
+  }
+  .loading-label { font-size: .8rem; color: var(--gray-400); }
+
+  /* ── RESULT ── */
+  .result-card {
+    margin: 24px auto 0;
+    max-width: 580px;
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius-lg);
+    padding: 28px 28px 24px;
+    box-shadow: var(--shadow);
+    display: none;
+    animation: fadeUp .4s ease both;
+  }
+  .result-card.show { display: block; }
+  .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+  .result-title { font-size: .875rem; font-weight: 600; color: var(--gray-500); letter-spacing: .02em; text-transform: uppercase; }
+  .result-badge {
+    font-size: .78rem; font-weight: 600; border-radius: 100px;
+    padding: 4px 12px;
+  }
+  .result-badge.ai { background: var(--red-light); color: var(--red); }
+  .result-badge.real { background: var(--green-light); color: var(--green); }
+  .result-badge.neutral { background: var(--gray-100); color: var(--gray-500); }
+
+  .score-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; }
+  .score-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 3.2rem; line-height: 1; color: var(--ink);
+  }
+  .score-label { font-size: .875rem; color: var(--gray-400); }
+
+  .score-bar-track {
+    height: 8px; background: var(--gray-100); border-radius: 100px; overflow: hidden; margin-bottom: 20px;
+  }
+  .score-bar-fill {
+    height: 100%; border-radius: 100px; width: 0%;
+    transition: width 1s cubic-bezier(.25,.46,.45,.94);
+  }
+  .score-bar-fill.ai { background: var(--red); }
+  .score-bar-fill.real { background: var(--green); }
+  .score-bar-fill.neutral { background: var(--gray-300); }
+
+  .result-meta {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    padding-top: 18px; border-top: 1px solid var(--gray-100);
+  }
+  .meta-item { }
+  .meta-label { font-size: .72rem; font-weight: 600; color: var(--gray-300); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+  .meta-val { font-size: .875rem; font-weight: 500; color: var(--charcoal); }
+
+  /* ── FEATURES ── */
+  .features {
+    padding: 100px 28px;
+    background: var(--off-white);
+    border-top: 1px solid var(--gray-100);
+  }
+  .section-wrap { max-width: 1100px; margin: 0 auto; }
+  .section-label {
+    font-size: .78rem; font-weight: 600; color: var(--blue);
+    text-transform: uppercase; letter-spacing: .1em;
+    margin-bottom: 12px; text-align: center;
+  }
+  .section-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 3.5vw, 2.8rem);
+    color: var(--ink); text-align: center; margin-bottom: 10px;
+    letter-spacing: -.02em; line-height: 1.2;
+  }
+  .section-sub {
+    text-align: center; color: var(--gray-400);
+    font-size: 1rem; max-width: 480px; margin: 0 auto 56px;
+  }
+  .features-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+  }
+  .feature-card {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius-lg);
+    padding: 28px 24px;
+    transition: transform .22s ease, box-shadow .22s ease;
+  }
+  .feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+  .feature-icon {
+    width: 44px; height: 44px; border-radius: 11px;
+    background: var(--off-white); border: 1px solid var(--gray-100);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 18px;
+    color: var(--blue);
+  }
+  .feature-icon svg { width: 20px; height: 20px; }
+  .feature-name { font-size: 1rem; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+  .feature-desc { font-size: .875rem; color: var(--gray-400); line-height: 1.65; }
+
+  /* ── STATS ── */
+  .stats {
+    padding: 80px 28px;
+    border-top: 1px solid var(--gray-100);
+    background: var(--white);
+  }
+  .stats-grid {
+    max-width: 900px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 2px; background: var(--gray-100);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius-lg); overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .stat-item {
+    background: var(--white); padding: 36px 28px; text-align: center;
+  }
+  .stat-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.6rem; color: var(--ink);
+    letter-spacing: -.03em; line-height: 1;
+    margin-bottom: 8px;
+  }
+  .stat-label { font-size: .875rem; color: var(--gray-400); }
+
+  /* ── HOW IT WORKS ── */
+  .how {
+    padding: 100px 28px;
+    background: var(--off-white);
+    border-top: 1px solid var(--gray-100);
+  }
+  .how-steps {
+    max-width: 820px; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 0;
+  }
+  .how-step {
+    display: flex; gap: 28px; align-items: flex-start;
+    padding: 28px 0;
+    border-bottom: 1px solid var(--gray-100);
+    opacity: 0; transform: translateY(16px);
+    transition: opacity .5s ease, transform .5s ease;
+  }
+  .how-step:last-child { border-bottom: none; }
+  .how-step.visible { opacity: 1; transform: translateY(0); }
+  .step-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem; color: var(--blue-mid);
+    line-height: 1; flex-shrink: 0; width: 44px; text-align: right;
+    padding-top: 2px;
+  }
+  .step-content { }
+  .step-title { font-size: 1.05rem; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+  .step-desc { font-size: .9rem; color: var(--gray-400); line-height: 1.7; }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 48px 28px;
+    border-top: 1px solid var(--gray-100);
+    background: var(--white);
+  }
+  .footer-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+  }
+  .footer-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.2rem; color: var(--ink); text-decoration: none;
+  }
+  .footer-logo span { color: var(--blue); }
+  .footer-links { display: flex; gap: 28px; list-style: none; }
+  .footer-links a {
+    font-size: .8rem; color: var(--gray-400); text-decoration: none;
+    transition: color .2s;
+  }
+  .footer-links a:hover { color: var(--charcoal); }
+  .footer-copy { font-size: .78rem; color: var(--gray-300); }
+
+  /* ── SCROLL REVEAL ── */
+  .reveal {
+    opacity: 0; transform: translateY(20px);
+    transition: opacity .55s ease, transform .55s ease;
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* ── MOBILE ── */
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+    .hero { padding: 110px 20px 60px; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .how-step { flex-direction: column; gap: 8px; }
+    .step-num { width: auto; text-align: left; }
+    .footer-inner { flex-direction: column; align-items: flex-start; gap: 20px; }
+    .features-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="#">Verid<span>·</span>ian</a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#stats">Results</a></li>
+    </ul>
+    <button class="nav-cta">Get Started Free</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="badge-dot"></span>
+    Now supporting 12+ image formats
+  </div>
+  <h1>Detect <em>AI-Generated</em><br>Content Instantly</h1>
+  <p class="hero-sub">Upload any image. Our model analyzes pixel-level patterns invisible to the human eye and delivers a precise authenticity score in seconds.</p>
+
+  <div class="upload-wrap">
+    <input type="file" id="fileInput" accept="image/*">
+
+    <div class="upload-box" id="uploadBox">
+      <div class="upload-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+        </svg>
+      </div>
+      <div class="upload-title">Drop your file here</div>
+      <div class="upload-sub">or <span>browse to upload</span></div>
+      <div class="upload-types">
+        <span class="type-chip">JPG</span>
+        <span class="type-chip">PNG</span>
+        <span class="type-chip">WEBP</span>
+        <span class="type-chip">AVIF</span>
+        <span class="type-chip">HEIC</span>
+      </div>
+    </div>
+
+    <!-- File Preview -->
+    <div class="preview-card" id="previewCard">
+      <div class="preview-thumb" id="previewThumb">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909"/>
+        </svg>
+      </div>
+      <div class="preview-info">
+        <div class="preview-name" id="previewName">—</div>
+        <div class="preview-size" id="previewSize">—</div>
+      </div>
+      <button class="preview-remove" id="removeBtn" title="Remove">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <button class="upload-btn" id="analyzeBtn" style="display:none">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+      </svg>
+      Analyze File
+    </button>
+
+    <!-- Loading -->
+    <div class="loading-wrap" id="loadingWrap">
+      <div class="progress-bar-track" style="width:100%">
+        <div class="progress-bar-fill" id="progressFill"></div>
+      </div>
+      <div class="loading-label" id="loadingLabel">Initializing model…</div>
+    </div>
+
+    <!-- Result -->
+    <div class="result-card" id="resultCard">
+      <div class="result-header">
+        <div class="result-title">AI Probability Score</div>
+        <div class="result-badge" id="resultBadge">—</div>
+      </div>
+      <div class="score-row">
+        <div class="score-num" id="scoreNum">0%</div>
+        <div class="score-label">likelihood of AI generation</div>
+      </div>
+      <div class="score-bar-track">
+        <div class="score-bar-fill" id="scoreBarFill"></div>
+      </div>
+      <div class="result-meta">
+        <div class="meta-item">
+          <div class="meta-label">File Type</div>
+          <div class="meta-val" id="metaType">—</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Confidence</div>
+          <div class="meta-val" id="metaConf">—</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Model Version</div>
+          <div class="meta-val">Veridian v3.1</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Analysis Time</div>
+          <div class="meta-val" id="metaTime">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="stats" id="stats">
+  <div class="stats-grid reveal">
+    <div class="stat-item">
+      <div class="stat-num">98.4%</div>
+      <div class="stat-label">Detection accuracy</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">2.3s</div>
+      <div class="stat-label">Average analysis time</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">40M+</div>
+      <div class="stat-label">Files analyzed</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="section-wrap">
+    <div class="section-label reveal">Process</div>
+    <div class="section-title reveal">How Veridian works</div>
+    <div class="section-sub reveal">Three precise steps. No manual work needed.</div>
+
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="step-num">01</div>
+        <div class="step-content">
+          <div class="step-title">Upload your image</div>
+          <div class="step-desc">Drag and drop any image file. We support JPG, PNG, WEBP, AVIF, and HEIC up to 50MB. Files are processed in-memory and never stored permanently.</div>
+        </div>
+      </div>
+      <div class="how-step">
+        <div class="step-num">02</div>
+        <div class="step-content">
+          <div class="step-title">Deep neural analysis</div>
+          <div class="step-desc">Our multi-layer model inspects pixel-level inconsistencies, DCT frequency artifacts, noise patterns, and generative fingerprints that AI image models leave behind.</div>
+        </div>
+      </div>
+      <div class="how-step">
+        <div class="step-num">03</div>
+        <div class="step-content">
+          <div class="step-title">Receive a precision score</div>
+          <div class="step-desc">A clear AI probability score with confidence rating returns instantly. Soft green means authentic. Soft red indicates AI-generated. No ambiguity, no guesswork.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="section-wrap">
+    <div class="section-label reveal">Capabilities</div>
+    <div class="section-title reveal">Built for serious use</div>
+    <div class="section-sub reveal">Designed for journalists, researchers, legal teams, and content platforms.</div>
+
+    <div class="features-grid">
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 4.5h16.5m-16.5 3.75h9"/>
+          </svg>
+        </div>
+        <div class="feature-name">Image Detection</div>
+        <div class="feature-desc">Catches outputs from Midjourney, DALL·E, Stable Diffusion, Firefly, and Adobe Generative Fill with over 98% accuracy across formats.</div>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+          </svg>
+        </div>
+        <div class="feature-name">Face &amp; Portrait Detection</div>
+        <div class="feature-desc">Specialized model for AI-generated faces — catches GAN portraits, diffusion-based headshots, and composite face swaps with high precision.</div>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
+          </svg>
+        </div>
+        <div class="feature-name">Instant Results</div>
+        <div class="feature-desc">Analysis completes in under 3 seconds for most images. No waiting queues, no batch delays. Results render directly in the browser.</div>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+          </svg>
+        </div>
+        <div class="feature-name">Privacy First</div>
+        <div class="feature-desc">Files are analyzed in an isolated sandbox and purged immediately after. No content is stored, indexed, or used for model training.</div>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/>
+          </svg>
+        </div>
+        <div class="feature-name">REST API</div>
+        <div class="feature-desc">Integrate detection directly into your platform via our clean REST API. SDKs available for Python, Node.js, and Go. Full docs included.</div>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"/>
+          </svg>
+        </div>
+        <div class="feature-name">Detailed Reports</div>
+        <div class="feature-desc">Export PDF or JSON reports with forensic breakdowns. Court-admissible format with confidence intervals and model attribution.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <a class="footer-logo" href="#">Verid<span>·</span>ian</a>
+    <ul class="footer-links">
+      <li><a href="#">Privacy</a></li>
+      <li><a href="#">Terms</a></li>
+      <li><a href="#">API Docs</a></li>
+      <li><a href="#">Contact</a></li>
+    </ul>
+    <div class="footer-copy">© 2025 Veridian Technologies</div>
+  </div>
+</footer>
+
+<script>
+const uploadBox = document.getElementById('uploadBox');
+const fileInput = document.getElementById('fileInput');
+const previewCard = document.getElementById('previewCard');
+const previewThumb = document.getElementById('previewThumb');
+const previewName = document.getElementById('previewName');
+const previewSize = document.getElementById('previewSize');
+const removeBtn = document.getElementById('removeBtn');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const loadingWrap = document.getElementById('loadingWrap');
+const progressFill = document.getElementById('progressFill');
+const loadingLabel = document.getElementById('loadingLabel');
+const resultCard = document.getElementById('resultCard');
+const resultBadge = document.getElementById('resultBadge');
+const scoreNum = document.getElementById('scoreNum');
+const scoreBarFill = document.getElementById('scoreBarFill');
+const metaType = document.getElementById('metaType');
+const metaConf = document.getElementById('metaConf');
+const metaTime = document.getElementById('metaTime');
+
+let currentFile = null;
+
+uploadBox.addEventListener('click', () => fileInput.click());
+uploadBox.addEventListener('dragover', e => { e.preventDefault(); uploadBox.classList.add('drag-over'); });
+uploadBox.addEventListener('dragleave', () => uploadBox.classList.remove('drag-over'));
+uploadBox.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadBox.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadFile(file);
+  else if (file) alert('Images only — JPG, PNG, WEBP, AVIF, HEIC supported.');
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+removeBtn.addEventListener('click', resetAll);
+analyzeBtn.addEventListener('click', runAnalysis);
+
+function loadFile(file) {
+  currentFile = file;
+  previewName.textContent = file.name;
+  previewSize.textContent = formatSize(file.size);
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    previewThumb.innerHTML = `<img src="${e.target.result}" alt="preview">`;
+  };
+  reader.readAsDataURL(file);
+
+  previewCard.classList.add('show');
+  analyzeBtn.style.display = 'inline-flex';
+  resultCard.classList.remove('show');
+  loadingWrap.classList.remove('show');
+}
+
+function resetAll() {
+  currentFile = null;
+  fileInput.value = '';
+  previewCard.classList.remove('show');
+  analyzeBtn.style.display = 'none';
+  resultCard.classList.remove('show');
+  loadingWrap.classList.remove('show');
+  progressFill.style.width = '0%';
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function runAnalysis() {
+  if (!currentFile) return;
+  analyzeBtn.style.display = 'none';
+  resultCard.classList.remove('show');
+  loadingWrap.classList.add('show');
+
+  const steps = [
+    [300, 'Extracting frequency features…'],
+    [600, 'Running neural inference…'],
+    [900, 'Checking compression artifacts…'],
+    [1200, 'Computing confidence intervals…'],
+    [1500, 'Finalizing score…'],
+  ];
+
+  const startTime = Date.now();
+  let prog = 0;
+  const progInterval = setInterval(() => {
+    prog = Math.min(prog + 1.8, 95);
+    progressFill.style.width = prog + '%';
+  }, 40);
+
+  steps.forEach(([delay, label]) => {
+    setTimeout(() => { loadingLabel.textContent = label; }, delay);
+  });
+
+  setTimeout(() => {
+    clearInterval(progInterval);
+    progressFill.style.width = '100%';
+
+    setTimeout(() => {
+      loadingWrap.classList.remove('show');
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      showResult(elapsed);
+    }, 300);
+  }, 1700);
+}
+
+function showResult(elapsed) {
+  // Demo: randomize a realistic score
+  const score = Math.round(20 + Math.random() * 75);
+  const isAI = score >= 65;
+  const isReal = score < 35;
+
+  let cls, label;
+  if (isAI) { cls = 'ai'; label = 'AI Generated'; }
+  else if (isReal) { cls = 'real'; label = 'Likely Authentic'; }
+  else { cls = 'neutral'; label = 'Inconclusive'; }
+
+  resultBadge.className = 'result-badge ' + cls;
+  resultBadge.textContent = label;
+  scoreBarFill.className = 'score-bar-fill ' + cls;
+
+  const ext = currentFile.name.split('.').pop().toUpperCase();
+  metaType.textContent = ext + ' · ' + formatSize(currentFile.size);
+  metaConf.textContent = (75 + Math.round(Math.random() * 22)) + '%';
+  metaTime.textContent = elapsed + 's';
+
+  resultCard.classList.add('show');
+
+  // Animate score number
+  let cur = 0;
+  const target = score;
+  const step = Math.ceil(target / 40);
+  const ticker = setInterval(() => {
+    cur = Math.min(cur + step, target);
+    scoreNum.textContent = cur + '%';
+    if (cur >= target) clearInterval(ticker);
+  }, 28);
+
+  // Animate bar after brief delay
+  setTimeout(() => {
+    scoreBarFill.style.width = score + '%';
+  }, 80);
+}
+
+// ── Scroll Reveal ──
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12 });
+
+document.querySelectorAll('.reveal, .how-step').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
