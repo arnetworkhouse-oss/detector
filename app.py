@@ -10,14 +10,15 @@ import io
 app = Flask(__name__)
 CORS(app)
 
-MODEL_URL = "https://huggingface.co/minchul/cvprw2023_ai_image_detector/resolve/main/model.onnx"
+# Public ONNX model - no auth needed
+MODEL_URL = "https://github.com/WildChlamydia/MidJourneyDetector/releases/download/v1.0/mj_detector.onnx"
 MODEL_PATH = "model.onnx"
 
 def download_model():
     if not os.path.exists(MODEL_PATH):
-        print("Downloading ONNX model...")
+        print("Downloading model...")
         urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
-        print("Model downloaded.")
+        print(f"Downloaded: {os.path.getsize(MODEL_PATH)} bytes")
 
 def preprocess(img: Image.Image) -> np.ndarray:
     img = img.resize((224, 224))
@@ -52,11 +53,11 @@ def detect():
         tensor = preprocess(img)
         logits = session.run([output_name], {input_name: tensor})[0][0]
 
-        # single logit -> sigmoid, or 2-class softmax
         if logits.shape[0] == 1:
             ai_prob = float(1 / (1 + np.exp(-logits[0])))
         else:
-            ai_prob = float(np.exp(logits[1]) / np.sum(np.exp(logits)))
+            exp = np.exp(logits - np.max(logits))
+            ai_prob = float(exp[1] / exp.sum())
 
         return jsonify(
             success=True,
