@@ -1,40 +1,36 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from PIL import Image
+from huggingface_hub import hf_hub_download
 import numpy as np
 import onnxruntime as ort
-import urllib.request
-import os
-import io
+import os, io
 
 app = Flask(__name__)
 CORS(app)
 
-# Public ONNX model - no auth needed
-MODEL_URL = "https://github.com/WildChlamydia/MidJourneyDetector/releases/download/v1.0/mj_detector.onnx"
-MODEL_PATH = "model.onnx"
+print("Downloading model...")
+model_path = hf_hub_download(
+    repo_id="LPX55/detection-model-1-ONNX",
+    filename="onnx/model.onnx"
+)
+print(f"Model at: {model_path}")
 
-def download_model():
-    if not os.path.exists(MODEL_PATH):
-        print("Downloading model...")
-        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
-        print(f"Downloaded: {os.path.getsize(MODEL_PATH)} bytes")
+session     = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
+input_name  = session.get_inputs()[0].name
+output_name = session.get_outputs()[0].name
+input_shape = session.get_inputs()[0].shape  # e.g. [1,3,224,224]
+img_size    = input_shape[2] if len(input_shape) == 4 else 224
+print(f"Model ready. Input shape: {input_shape}")
 
 def preprocess(img: Image.Image) -> np.ndarray:
-    img = img.resize((224, 224))
+    img = img.resize((img_size, img_size))
     arr = np.array(img).astype(np.float32) / 255.0
     mean = np.array([0.485, 0.456, 0.406])
     std  = np.array([0.229, 0.224, 0.225])
-    arr = (arr - mean) / std
-    arr = arr.transpose(2, 0, 1)
+    arr  = (arr - mean) / std
+    arr  = arr.transpose(2, 0, 1)           # HWC -> CHW
     return arr[np.newaxis].astype(np.float32)
-
-print("Loading model...")
-download_model()
-session = ort.InferenceSession(MODEL_PATH, providers=["CPUExecutionProvider"])
-input_name  = session.get_inputs()[0].name
-output_name = session.get_outputs()[0].name
-print("Model ready.")
 
 @app.get("/")
 def home():
@@ -45,19 +41,19 @@ def detect():
     if "file" not in request.files:
         return jsonify(success=False, message="No file uploaded"), 400
     file = request.files["file"]
-    if file.filename == "":
+    if not file.filename:
         return jsonify(success=False, message="Empty filename"), 400
-
     try:
-        img = Image.open(io.BytesIO(file.read())).convert("RGB")
+        img    = Image.open(io.BytesIO(file.read())).convert("RGB")
         tensor = preprocess(img)
         logits = session.run([output_name], {input_name: tensor})[0][0]
 
-        if logits.shape[0] == 1:
-            ai_prob = float(1 / (1 + np.exp(-logits[0])))
-        else:
-            exp = np.exp(logits - np.max(logits))
+        # 2-class softmax (index 1 = AI)
+        if logits.shape[0] >= 2:
+            exp     = np.exp(logits - np.max(logits))
             ai_prob = float(exp[1] / exp.sum())
+        else:
+            ai_prob = float(1 / (1 + np.exp(-logits[0])))
 
         return jsonify(
             success=True,
