@@ -3,3 +3,4 @@ flask-cors
 onnxruntime
 Pillow
 numpy
+huggingface_hub
