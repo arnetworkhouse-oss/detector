@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VERITAS | AI Forensic Engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #0a0a0a;
+            --bg-card: #121212;
+            --accent-primary: #ffffff; /* Solid White for maximum contrast */
+            --accent-muted: #404040;
+            --text-primary: #ffffff;
+            --text-secondary: #808080;
+            --border-solid: #262626;
+            --transition-fast: all 0.2s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            font-family: 'Montserrat', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        /* Fixed Logo Container */
+        .logo-wrapper {
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-mark {
+            width: 30px;
+            height: 30px;
+            border: 1px solid var(--accent-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Cinzel', serif;
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--accent-primary);
+        }
+
+        .logo-brand {
+            font-family: 'Cinzel', serif;
+            letter-spacing: 0.4em;
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: var(--text-primary);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-solid);
+            padding: 5rem 3rem;
+            text-align: center;
+            position: relative;
+        }
+
+        header h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 3.5rem;
+            letter-spacing: 0.5em;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-weight: 300;
+            font-size: 0.7rem;
+            letter-spacing: 0.6em;
+            margin-bottom: 4rem;
+            text-transform: uppercase;
+        }
+
+        .dropzone {
+            border: 1px solid var(--border-solid);
+            padding: 5rem 2rem;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            background: transparent;
+        }
+
+        .dropzone:hover {
+            border-color: var(--accent-primary);
+            background: #1a1a1a;
+        }
+
+        .dropzone-text {
+            color: var(--text-secondary);
+            font-size: 0.65rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+        }
+
+        #file-input { display: none; }
+
+        .preview-container {
+            display: none;
+            position: relative;
+            margin-top: 1rem;
+            border: 1px solid var(--border-solid);
+            background: #000;
+        }
+
+        #image-preview {
+            display: block;
+            max-width: 100%;
+            max-height: 450px;
+            margin: 0 auto;
+        }
+
+        /* Solid Scan Line */
+        .scan-line {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--accent-primary);
+            z-index: 10;
+            animation: scan 2.5s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+
+        .btn {
+            background: var(--accent-primary);
+            border: none;
+            color: var(--bg-deep);
+            padding: 1.2rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4em;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            width: 100%;
+            margin-top: 2.5rem;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: #e0e0e0;
+        }
+
+        .btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
+        /* Results */
+        .results-container {
+            display: none;
+            margin-top: 2rem;
+        }
+
+        .result-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4em;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            display: block;
+        }
+
+        .result-value {
+            font-family: 'Cinzel', serif;
+            font-size: 4rem;
+            color: var(--text-primary);
+            margin-bottom: 2rem;
+            font-weight: 700;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 1px;
+            background: var(--border-solid);
+            margin-bottom: 4rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0;
+            background: var(--accent-primary);
+            transition: width 1.5s ease-out;
+        }
+
+        .status-msg {
+            font-size: 0.6rem;
+            letter-spacing: 0.4em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-top: 1.5rem;
+            display: none;
+        }
+
+        footer {
+            margin-top: 5rem;
+            font-size: 0.55rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.5em;
+            text-transform: uppercase;
+        }
+
+        /* Loader Overlay */
+        .loader-overlay {
+            display: none;
+            margin-top: 2rem;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .loader-rig {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gear {
+            position: absolute;
+            border: 2px solid var(--accent-muted);
+            border-radius: 50%;
+        }
+
+        .gear::before, .gear::after {
+            content: '';
+            position: absolute;
+            background: var(--accent-muted);
+        }
+
+        .gear-outer {
+            width: 140px;
+            height: 140px;
+            border-color: var(--text-secondary);
+            animation: spin 6s linear infinite;
+        }
+
+        .gear-outer::before {
+            top: -6px; left: 50%;
+            width: 4px; height: 14px;
+            transform: translateX(-50%);
+        }
+        .gear-outer::after {
+            bottom: -6px; left: 50%;
+            width: 4px; height: 14px;
+            transform: translateX(-50%);
+        }
+
+        .gear-inner {
+            width: 86px;
+            height: 86px;
+            border-color: var(--accent-primary);
+            animation: spin-reverse 4s linear infinite;
+        }
+
+        .gear-inner::before {
+            left: -6px; top: 50%;
+            width: 14px; height: 4px;
+            transform: translateY(-50%);
+        }
+        .gear-inner::after {
+            right: -6px; top: 50%;
+            width: 14px; height: 4px;
+            transform: translateY(-50%);
+        }
+
+        .bot-core {
+            position: relative;
+            width: 38px;
+            height: 38px;
+            border: 1px solid var(--accent-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-card);
+            z-index: 2;
+            animation: pulse-core 1.6s ease-in-out infinite;
+        }
+
+        .bot-core::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            box-shadow: -10px 0 0 var(--accent-primary), 10px 0 0 var(--accent-primary);
+            animation: blink 1.6s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes spin-reverse {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(-360deg); }
+        }
+
+        @keyframes pulse-core {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.15); }
+            50% { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        .loader-stage {
+            font-size: 0.65rem;
+            letter-spacing: 0.35em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            text-align: center;
+            min-height: 1.2em;
+        }
+
+        .loader-track {
+            width: 220px;
+            max-width: 100%;
+            height: 1px;
+            background: var(--border-solid);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loader-track-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: var(--accent-primary);
+            transition: width 0.4s ease-out;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 600px) {
+            body { padding: 1rem; }
+
+            .card {
+                padding: 2.5rem 1.25rem;
+            }
+
+            header h1 {
+                font-size: 1.9rem;
+                letter-spacing: 0.25em;
+            }
+
+            header p {
+                font-size: 0.55rem;
+                letter-spacing: 0.3em;
+                margin-bottom: 2.5rem;
+            }
+
+            .dropzone {
+                padding: 3rem 1rem;
+            }
+
+            .dropzone-text {
+                font-size: 0.55rem;
+                letter-spacing: 0.2em;
+            }
+
+            .result-value {
+                font-size: 2.6rem;
+            }
+
+            .btn {
+                padding: 1rem;
+                font-size: 0.65rem;
+                letter-spacing: 0.25em;
+            }
+
+            .loader-rig {
+                width: 110px;
+                height: 110px;
+            }
+
+            .gear-outer { width: 110px; height: 110px; }
+            .gear-inner { width: 66px; height: 66px; }
+
+            .loader-stage {
+                font-size: 0.55rem;
+                letter-spacing: 0.2em;
+            }
+
+            footer {
+                margin-top: 3rem;
+                font-size: 0.45rem;
+                letter-spacing: 0.3em;
+            }
+        }
+
+        @media (max-width: 380px) {
+            header h1 { font-size: 1.5rem; }
+            .result-value { font-size: 2.1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="logo-wrapper">
+        <div class="logo-mark">V</div>
+        <div class="logo-brand">VERITAS</div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <header>
+                <h1>Veritas</h1>
+                <p>Advanced AI Detection System</p>
+            </header>
+
+            <div id="main-interface">
+                <div class="dropzone" id="dropzone">
+                    <span class="dropzone-text">Insert evidence for analysis</span>
+                    <input type="file" id="file-input" accept="image/*">
+                </div>
+
+                <div class="preview-container" id="preview-container">
+                    <div class="scan-line" id="scan-line"></div>
+                    <img id="image-preview" src="" alt="Evidence">
+                </div>
+
+                <button class="btn" id="action-btn" style="display: none;">Initiate Scan</button>
+            </div>
+
+            <div class="results-container" id="results-container">
+                <span class="result-label">Neural Probability Index</span>
+                <div class="result-value" id="result-percentage">0.0%</div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <button class="btn" id="reset-btn">New Sequence</button>
+            </div>
+
+            <div class="loader-overlay" id="loader-overlay">
+                <div class="loader-rig">
+                    <div class="gear gear-outer"></div>
+                    <div class="gear gear-inner"></div>
+                    <div class="bot-core"></div>
+                </div>
+                <div class="loader-stage" id="loader-stage">Initializing...</div>
+                <div class="loader-track">
+                    <div class="loader-track-fill" id="loader-track-fill"></div>
+                </div>
+            </div>
+
+            <footer>Classified Protocol • Local Neural Network</footer>
+        </div>
+    </div>
+
+    <script type="module">
+        const API_URL = 'https://arnetworkhouse-ai-detector.hf.space/detect';
+
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input');
+        const previewContainer = document.getElementById('preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const actionBtn = document.getElementById('action-btn');
+        const scanLine = document.getElementById('scan-line');
+        const resultsContainer = document.getElementById('results-container');
+        const resultPercentage = document.getElementById('result-percentage');
+        const progressFill = document.getElementById('progress-fill');
+        const resetBtn = document.getElementById('reset-btn');
+        const loaderOverlay = document.getElementById('loader-overlay');
+        const loaderStage = document.getElementById('loader-stage');
+        const loaderTrackFill = document.getElementById('loader-track-fill');
+
+        dropzone.onclick = () => fileInput.click();
+
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    imagePreview.src = ev.target.result;
+                    dropzone.style.display = 'none';
+                    previewContainer.style.display = 'block';
+                    actionBtn.style.display = 'block';
+                    actionBtn.innerText = "Initiate Scan";
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        // Stage ladder: [elapsedSeconds, label, trackPercent]
+        // Track creeps toward ~92% over time, holds there until real response lands.
+        const STAGES = [
+            [0,    "Uploading Evidence",            8],
+            [1.2,  "Synchronizing Neural Weights",   22],
+            [3,    "Deconstructing Pixel Artifacts", 40],
+            [6,    "Cross-Referencing Patterns",      58],
+            [10,   "Modeling Latent Signatures",      72],
+            [16,   "Refining Confidence Bounds",      84],
+            [24,   "Finalizing Forensic Report",      92],
+        ];
+
+        let loaderTimer = null;
+
+        function startLoader() {
+            previewContainer.style.display = 'none';
+            actionBtn.style.display = 'none';
+            scanLine.style.display = 'none';
+            loaderOverlay.style.display = 'flex';
+            loaderTrackFill.style.width = '0%';
+
+            const start = performance.now();
+
+            function tick() {
+                const elapsed = (performance.now() - start) / 1000;
+                let current = STAGES[0];
+                for (const s of STAGES) {
+                    if (elapsed >= s[0]) current = s;
+                }
+                loaderStage.innerText = current[1] + '...';
+                loaderTrackFill.style.width = current[2] + '%';
+            }
+
+            tick();
+            loaderTimer = setInterval(tick, 300);
+        }
+
+        function stopLoader(success) {
+            if (loaderTimer) clearInterval(loaderTimer);
+            loaderTimer = null;
+            if (success) {
+                loaderStage.innerText = "Analysis Complete";
+                loaderTrackFill.style.width = '100%';
+            }
+        }
+
+        actionBtn.onclick = async () => {
+            actionBtn.disabled = true;
+            startLoader();
+
+            try {
+                const blob = await (await fetch(imagePreview.src)).blob();
+                const formData = new FormData();
+                formData.append('file', blob, 'upload.jpg');
+
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.detail || `Request failed (${res.status})`);
+                }
+
+                const data = await res.json();
+                stopLoader(true);
+
+                setTimeout(() => {
+                    showResults(data.ai_probability);
+                }, 500);
+
+            } catch (err) {
+                stopLoader(false);
+                loaderOverlay.style.display = 'none';
+                previewContainer.style.display = 'block';
+                actionBtn.style.display = 'block';
+                actionBtn.disabled = false;
+                loaderStage.innerText = "Error: " + err.message;
+            }
+        };
+
+        function showResults(percentage) {
+            loaderOverlay.style.display = 'none';
+            resultsContainer.style.display = 'block';
+
+            resultPercentage.innerText = `${percentage}%`;
+            requestAnimationFrame(() => {
+                progressFill.style.width = `${percentage}%`;
+            });
+        }
+
+        resetBtn.onclick = () => {
+            resultsContainer.style.display = 'none';
+            dropzone.style.display = 'block';
+            fileInput.value = '';
+            progressFill.style.width = '0';
+            actionBtn.disabled = false;
+        };
+    </script>
+</body>
+</html>
