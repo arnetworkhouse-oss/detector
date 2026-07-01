@@ -112,6 +112,16 @@
             background: #1a1a1a;
         }
 
+        .dropzone.drag-over {
+            border-color: var(--accent-primary);
+            background: #1a1a1a;
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.08);
+        }
+
+        .dropzone.drag-over .dropzone-text {
+            color: var(--text-primary);
+        }
+
         .dropzone-text {
             color: var(--text-secondary);
             font-size: 0.65rem;
@@ -167,10 +177,38 @@
             transition: var(--transition-fast);
             width: 100%;
             margin-top: 2.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: -100%;
+            width: 60%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0,0,0,0.12), transparent);
+            transform: translateY(-50%) skewX(-20deg);
+            transition: none;
+        }
+
+        .btn:hover:not(:disabled)::before {
+            animation: btn-shimmer 0.6s ease forwards;
         }
 
         .btn:hover:not(:disabled) {
             background: #e0e0e0;
+            letter-spacing: 0.55em;
+        }
+
+        .btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        @keyframes btn-shimmer {
+            0%   { left: -100%; }
+            100% { left: 160%; }
         }
 
         .btn:disabled { opacity: 0.2; cursor: not-allowed; }
@@ -197,6 +235,20 @@
             margin-bottom: 2rem;
             font-weight: 700;
         }
+
+        .result-verdict {
+            font-size: 0.65rem;
+            letter-spacing: 0.35em;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+
+        .verdict-human { color: #4caf50; }
+        .verdict-likely-human { color: #8bc34a; }
+        .verdict-uncertain { color: #ff9800; }
+        .verdict-likely-ai { color: #ff5722; }
+        .verdict-ai { color: #f44336; }
 
         .progress-track {
             width: 100%;
@@ -447,7 +499,7 @@
 
             <div id="main-interface">
                 <div class="dropzone" id="dropzone">
-                    <span class="dropzone-text">Insert evidence for analysis</span>
+                    <span class="dropzone-text">Drop image here or click to upload</span>
                     <input type="file" id="file-input" accept="image/*">
                 </div>
 
@@ -462,6 +514,7 @@
             <div class="results-container" id="results-container">
                 <span class="result-label">Neural Probability Index</span>
                 <div class="result-value" id="result-percentage">0.0%</div>
+                <div class="result-verdict" id="result-verdict"></div>
                 <div class="progress-track">
                     <div class="progress-fill" id="progress-fill"></div>
                 </div>
@@ -503,19 +556,48 @@
 
         dropzone.onclick = () => fileInput.click();
 
+        // Drag & drop
+        dropzone.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('drag-over');
+        });
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('drag-over');
+        });
+        dropzone.addEventListener('dragleave', (e) => {
+            if (!dropzone.contains(e.relatedTarget)) {
+                dropzone.classList.remove('drag-over');
+            }
+        });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                loadFile(file);
+            }
+        });
+
+        // Also prevent browser default drag-open on body
+        document.addEventListener('dragover', (e) => e.preventDefault());
+        document.addEventListener('drop', (e) => e.preventDefault());
+
+        function loadFile(file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                imagePreview.src = ev.target.result;
+                dropzone.style.display = 'none';
+                previewContainer.style.display = 'block';
+                actionBtn.style.display = 'block';
+                actionBtn.innerText = "Initiate Scan";
+            };
+            reader.readAsDataURL(file);
+        }
+
         fileInput.onchange = (e) => {
             const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    imagePreview.src = ev.target.result;
-                    dropzone.style.display = 'none';
-                    previewContainer.style.display = 'block';
-                    actionBtn.style.display = 'block';
-                    actionBtn.innerText = "Initiate Scan";
-                };
-                reader.readAsDataURL(file);
-            }
+            if (file) loadFile(file);
         };
 
         // Stage ladder: [elapsedSeconds, label, trackPercent]
@@ -600,11 +682,24 @@
             }
         };
 
+        const resultVerdict = document.getElementById('result-verdict');
+
+        function getVerdict(pct) {
+            if (pct >= 90) return { text: "Confirmed AI Generated",       cls: "verdict-ai" };
+            if (pct >= 70) return { text: "Likely AI Generated",          cls: "verdict-likely-ai" };
+            if (pct >= 45) return { text: "Uncertain — Could Be Either",  cls: "verdict-uncertain" };
+            if (pct >= 20) return { text: "Likely Human / Real Photo",    cls: "verdict-likely-human" };
+            return              { text: "Authentic — Human Origin",        cls: "verdict-human" };
+        }
+
         function showResults(percentage) {
             loaderOverlay.style.display = 'none';
             resultsContainer.style.display = 'block';
 
             resultPercentage.innerText = `${percentage}%`;
+            const v = getVerdict(percentage);
+            resultVerdict.innerText = v.text;
+            resultVerdict.className = `result-verdict ${v.cls}`;
             requestAnimationFrame(() => {
                 progressFill.style.width = `${percentage}%`;
             });
